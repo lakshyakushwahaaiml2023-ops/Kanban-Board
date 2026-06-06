@@ -1,0 +1,190 @@
+{
+  "info": {
+    "name": "Kanban Board API",
+    "description": "Complete CRUD collection for Kanban Board backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BASE_URL", "value": "http://localhost:5000/api" },
+    { "key": "BOARD_ID",  "value": "" },
+    { "key": "TASK_ID",   "value": "" },
+    { "key": "USER_ID",   "value": "6659f1a2c8e4a2b3d4e5f6a1" }
+  ],
+  "item": [
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "1. Create Board",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/boards", "host": ["{{BASE_URL}}"], "path": ["boards"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My Kanban Board\",\n  \"createdBy\": \"{{USER_ID}}\",\n  \"members\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "2. Get All Boards",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{BASE_URL}}/boards", "host": ["{{BASE_URL}}"], "path": ["boards"] }
+          }
+        },
+        {
+          "name": "3. Get Board By ID (with Tasks)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{BASE_URL}}/boards/{{BOARD_ID}}", "host": ["{{BASE_URL}}"], "path": ["boards", "{{BOARD_ID}}"] }
+          }
+        },
+        {
+          "name": "4. Invite Member to Board",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/boards/{{BOARD_ID}}/invite", "host": ["{{BASE_URL}}"], "path": ["boards", "{{BOARD_ID}}", "invite"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"6659f1a2c8e4a2b3d4e5f6a2\"\n}"
+            }
+          }
+        },
+        {
+          "name": "5. Update Board",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/boards/{{BOARD_ID}}", "host": ["{{BASE_URL}}"], "path": ["boards", "{{BOARD_ID}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Board Title\"\n}"
+            }
+          }
+        },
+        {
+          "name": "6. Delete Board",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{BASE_URL}}/boards/{{BOARD_ID}}", "host": ["{{BASE_URL}}"], "path": ["boards", "{{BOARD_ID}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "1. Create Task",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/tasks", "host": ["{{BASE_URL}}"], "path": ["tasks"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design homepage\",\n  \"description\": \"Create wireframes for the main landing page\",\n  \"priority\": \"High\",\n  \"dueDate\": \"2026-06-30\",\n  \"board\": \"{{BOARD_ID}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "2. Get All Tasks (by Board)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/tasks?board={{BOARD_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["tasks"],
+              "query": [{ "key": "board", "value": "{{BOARD_ID}}" }]
+            }
+          }
+        },
+        {
+          "name": "3. Get Tasks by Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/tasks?board={{BOARD_ID}}&status=Todo",
+              "host": ["{{BASE_URL}}"],
+              "path": ["tasks"],
+              "query": [
+                { "key": "board",  "value": "{{BOARD_ID}}" },
+                { "key": "status", "value": "Todo" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Get Task By ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{BASE_URL}}/tasks/{{TASK_ID}}", "host": ["{{BASE_URL}}"], "path": ["tasks", "{{TASK_ID}}"] }
+          }
+        },
+        {
+          "name": "5. Update Task Details",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/tasks/{{TASK_ID}}", "host": ["{{BASE_URL}}"], "path": ["tasks", "{{TASK_ID}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design homepage (revised)\",\n  \"priority\": \"Medium\",\n  \"status\": \"In Progress\",\n  \"position\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "6. Delete Task",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{BASE_URL}}/tasks/{{TASK_ID}}", "host": ["{{BASE_URL}}"], "path": ["tasks", "{{TASK_ID}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Invalid Board ID (400)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{BASE_URL}}/boards/invalid-id", "host": ["{{BASE_URL}}"], "path": ["boards", "invalid-id"] }
+          }
+        },
+        {
+          "name": "Board Not Found (404)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{BASE_URL}}/boards/6659f1a2c8e4a2b3d4e5f6ff", "host": ["{{BASE_URL}}"], "path": ["boards", "6659f1a2c8e4a2b3d4e5f6ff"] }
+          }
+        },
+        {
+          "name": "Create Task - Missing Title (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/tasks", "host": ["{{BASE_URL}}"], "path": ["tasks"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"No title provided\",\n  \"board\": \"{{BOARD_ID}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Invite Duplicate Member (409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}/boards/{{BOARD_ID}}/invite", "host": ["{{BASE_URL}}"], "path": ["boards", "{{BOARD_ID}}", "invite"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"6659f1a2c8e4a2b3d4e5f6a2\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

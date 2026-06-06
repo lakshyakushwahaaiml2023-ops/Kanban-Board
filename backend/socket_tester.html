@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kanban Socket.io Tester</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 24px;
+      gap: 20px;
+    }
+    h1 { color: #38bdf8; font-size: 1.4rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    h2 { font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    input, select {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2563eb; }
+    button.red { background: #ef4444; }
+    button.red:hover { background: #dc2626; }
+    button.green { background: #22c55e; }
+    button.green:hover { background: #16a34a; }
+    #log {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 16px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-line { padding: 3px 6px; border-radius: 4px; }
+    .log-line.emit  { color: #34d399; }
+    .log-line.recv  { color: #38bdf8; }
+    .log-line.error { color: #f87171; }
+    .log-line.info  { color: #a78bfa; }
+    .status-bar {
+      display: flex; align-items: center; gap: 8px; font-size: 0.82rem;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ef4444; transition: background 0.3s;
+    }
+    .dot.connected { background: #22c55e; }
+    label { font-size: 0.8rem; color: #94a3b8; }
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+  </style>
+</head>
+<body>
+
+<h1>🔌 Kanban Board — Socket.io Live Tester</h1>
+
+<div class="status-bar">
+  <div class="dot" id="dot"></div>
+  <span id="status-text">Disconnected</span>
+  <span style="margin-left:auto; color:#475569; font-size:0.75rem" id="socket-id"></span>
+</div>
+
+<div class="grid">
+
+  <!-- Connect -->
+  <div class="card">
+    <h2>Connection</h2>
+    <label>Server URL</label>
+    <input id="serverUrl" value="http://localhost:5000" />
+    <label>User Name</label>
+    <input id="userName" value="Alice" />
+    <label>User ID (any ObjectId)</label>
+    <input id="userId" value="6659f1a2c8e4a2b3d4e5f6a1" />
+    <div class="row">
+      <button class="green" onclick="connectSocket()">Connect</button>
+      <button class="red" onclick="disconnectSocket()">Disconnect</button>
+    </div>
+  </div>
+
+  <!-- Join Board -->
+  <div class="card">
+    <h2>join_board</h2>
+    <label>Board ID</label>
+    <input id="boardId" placeholder="Paste a board _id from DB" />
+    <button onclick="joinBoard()">Join Board Room</button>
+  </div>
+
+  <!-- Move Task -->
+  <div class="card">
+    <h2>move_task</h2>
+    <label>Task ID</label>
+    <input id="taskId" placeholder="Paste a task _id from DB" />
+    <label>New Status</label>
+    <select id="newStatus">
+      <option>Todo</option>
+      <option>In Progress</option>
+      <option>Review</option>
+      <option>Done</option>
+    </select>
+    <label>New Position</label>
+    <input id="newPosition" type="number" value="0" />
+    <label>Client Version (must match task's current version)</label>
+    <input id="taskVersion" type="number" value="0" />
+    <button onclick="moveTask()">Emit move_task</button>
+  </div>
+
+  <!-- Typing Indicator -->
+  <div class="card">
+    <h2>typing_indicator</h2>
+    <label>Task ID being edited</label>
+    <input id="typingTaskId" placeholder="Task _id" />
+    <div class="row">
+      <button class="green" onclick="sendTyping(true)">Start Typing</button>
+      <button class="red"   onclick="sendTyping(false)">Stop Typing</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Event Log -->
+<div id="log"><span class="log-line info">▶ Event log will appear here...</span></div>
+<button class="red" style="width:100px;margin-left:auto" onclick="clearLog()">Clear Log</button>
+
+<script>
+  let socket = null;
+
+  function log(msg, type = 'info') {
+    const el = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = `log-line ${type}`;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('log').innerHTML = '';
+  }
+
+  function setConnected(connected) {
+    document.getElementById('dot').classList.toggle('connected', connected);
+    document.getElementById('status-text').textContent = connected ? 'Connected' : 'Disconnected';
+    if (!connected) document.getElementById('socket-id').textContent = '';
+  }
+
+  function connectSocket() {
+    const url = document.getElementById('serverUrl').value;
+    if (socket) socket.disconnect();
+
+    socket = io(url, { transports: ['websocket', 'polling'] });
+
+    socket.on('connect', () => {
+      setConnected(true);
+      document.getElementById('socket-id').textContent = `socket: ${socket.id}`;
+      log(`Connected — socket id: ${socket.id}`, 'info');
+    });
+
+    socket.on('disconnect', (reason) => {
+      setConnected(false);
+      log(`Disconnected: ${reason}`, 'error');
+    });
+
+    socket.on('joined_board', (data) => log(`← joined_board: ${JSON.stringify(data)}`, 'recv'));
+    socket.on('online_members', (data) => log(`← online_members: ${JSON.stringify(data)}`, 'recv'));
+    socket.on('task_moved', (data) => log(`← task_moved: ${JSON.stringify(data)}`, 'recv'));
+    socket.on('move_confirmed', (data) => log(`← move_confirmed: ${JSON.stringify(data)}`, 'recv'));
+    socket.on('move_rejected', (data) => log(`← move_rejected: ${JSON.stringify(data)}`, 'error'));
+    socket.on('user_typing', (data) => log(`← user_typing: ${JSON.stringify(data)}`, 'recv'));
+    socket.on('connect_error', (err) => log(`Connection error: ${err.message}`, 'error'));
+  }
+
+  function disconnectSocket() {
+    if (socket) { socket.disconnect(); socket = null; }
+  }
+
+  function joinBoard() {
+    if (!socket) return log('Not connected!', 'error');
+    const boardId  = document.getElementById('boardId').value.trim();
+    const userId   = document.getElementById('userId').value.trim();
+    const userName = document.getElementById('userName').value.trim();
+    if (!boardId) return log('Board ID is required', 'error');
+    socket.emit('join_board', { boardId, userId, userName });
+    log(`→ join_board: ${boardId} as ${userName}`, 'emit');
+  }
+
+  function moveTask() {
+    if (!socket) return log('Not connected!', 'error');
+    const boardId     = document.getElementById('boardId').value.trim();
+    const taskId      = document.getElementById('taskId').value.trim();
+    const newStatus   = document.getElementById('newStatus').value;
+    const newPosition = parseInt(document.getElementById('newPosition').value, 10);
+    const version     = parseInt(document.getElementById('taskVersion').value, 10);
+    const movedBy     = document.getElementById('userName').value.trim();
+    if (!taskId) return log('Task ID is required', 'error');
+    socket.emit('move_task', { boardId, taskId, newStatus, newPosition, version, movedBy });
+    log(`→ move_task: [${taskId}] → ${newStatus}@${newPosition} (v${version})`, 'emit');
+  }
+
+  function sendTyping(isTyping) {
+    if (!socket) return log('Not connected!', 'error');
+    const boardId  = document.getElementById('boardId').value.trim();
+    const taskId   = document.getElementById('typingTaskId').value.trim();
+    const userId   = document.getElementById('userId').value.trim();
+    const userName = document.getElementById('userName').value.trim();
+    socket.emit('typing_indicator', { boardId, taskId, userId, userName, isTyping });
+    log(`→ typing_indicator: isTyping=${isTyping} on task ${taskId}`, 'emit');
+  }
+</script>
+</body>
+</html>
